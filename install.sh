@@ -58,6 +58,15 @@ fi
 mkdir -p .claude
 [ -f .claude/settings.json ] || cp "$KIT_DIR/templates/settings.json" .claude/settings.json
 
+# ── 6b. Install the maxed-out GLOBAL CLAUDE.md (token discipline, every session)
+mkdir -p ~/.claude
+if [ ! -f ~/.claude/CLAUDE.md ]; then
+  cp "$KIT_DIR/templates/CLAUDE.global.md" ~/.claude/CLAUDE.md
+  echo "    installed ~/.claude/CLAUDE.md (global token-discipline rules)"
+else
+  echo "    ~/.claude/CLAUDE.md exists — compare with templates/CLAUDE.global.md to merge"
+fi
+
 # ── 7. Symlink cckit CLI to PATH ────────────────────────────────────────────
 if [ -f "$KIT_DIR/cckit" ]; then
   BIN_PATH="${HOME}/.local/bin"
