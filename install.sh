@@ -67,6 +67,20 @@ else
   echo "    ~/.claude/CLAUDE.md exists — compare with templates/CLAUDE.global.md to merge"
 fi
 
+# ── 6c. Install skills user-scope (load in EVERY session: explore, handoff, design, optimize)
+if [ -d "$KIT_DIR/skills" ]; then
+  mkdir -p ~/.claude/skills
+  for s in "$KIT_DIR"/skills/*/; do
+    name="$(basename "$s")"
+    [ -d ~/.claude/skills/"$name" ] || cp -R "$s" ~/.claude/skills/"$name"
+  done
+  echo "    installed skills → ~/.claude/skills ($(ls -1 "$KIT_DIR"/skills | tr '\n' ' '))"
+fi
+
+# ── 6d. Statusline: live context-usage bar so you never hit the limit by surprise
+[ -f "$KIT_DIR/templates/statusline.sh" ] && cp "$KIT_DIR/templates/statusline.sh" ~/.claude/statusline.sh
+echo "    (add \"statusLine\": {\"type\":\"command\",\"command\":\"bash ~/.claude/statusline.sh\"} to ~/.claude/settings.json)"
+
 # ── 7. Symlink cckit CLI to PATH ────────────────────────────────────────────
 if [ -f "$KIT_DIR/cckit" ]; then
   BIN_PATH="${HOME}/.local/bin"

@@ -5,10 +5,12 @@
 
 # Operating rules — every session, every repo
 
-## 1 · Explore with SUBAGENTS — this is the #1 token rule (standing user directive)
-- ANY exploration/investigation ("how does X work", "where is Y", "find all Z", tracing a bug across files, understanding an unfamiliar area) → **spawn a subagent** (Task/Explore) to do it.
-- The subagent reads the files in ITS OWN context and returns only a short summary. Those file-reads never enter my window — so when it finishes, those tokens are gone for good. Use its summary and CONTINUE; do not re-read what it already covered.
-- I do NOT need to ask permission to spawn an exploration subagent — the user has standing-authorized it. Prefer `Explore`/`general-purpose` on Haiku (`CLAUDE_CODE_SUBAGENT_MODEL=haiku`).
+## 1 · Explore with SUBAGENTS that LEARN — the #1 token rule (standing user directive)
+- ANY exploration/investigation ("how does X work", "where is Y", "find all Z", tracing a bug, understanding an unfamiliar area) → use the **`explore` skill**: spawn a subagent to do it.
+- **Cache first:** before exploring, check `brain/Exploration.md` (and `grepai search`). If it's already answered there, use that — do NOT re-explore.
+- The subagent reads files in ITS OWN context and returns only a short structured summary (question · where it looked · findings w/ file:line · gotchas). Those reads never enter my window — when it finishes, those tokens are gone for good.
+- **Then cache it:** append the subagent's summary to `brain/Exploration.md` so the next time is a near-free hit. Use the summary and CONTINUE; never re-read what it covered.
+- I do NOT need to ask permission to spawn an exploration subagent — standing-authorized. Prefer `Explore`/`general-purpose` on Haiku (`CLAUDE_CODE_SUBAGENT_MODEL=haiku`).
 - Only read files directly in the main context when I already know the exact file+lines to edit.
 
 ## 1b · Search, don't brute-force read
