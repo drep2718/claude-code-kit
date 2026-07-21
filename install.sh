@@ -23,6 +23,18 @@ if ! command -v grepai >/dev/null 2>&1; then
   fi
 else echo "    grepai already installed ✓"; fi
 
+# ── 2b. ast-grep — structural (AST) code search, precise & token-light ──────
+if ! command -v ast-grep >/dev/null 2>&1; then
+  echo "==> Installing ast-grep (structural search)..."
+  command -v brew >/dev/null 2>&1 && brew install ast-grep || cargo install ast-grep 2>/dev/null || echo "    (skip ast-grep — install brew or cargo)"
+else echo "    ast-grep already installed ✓"; fi
+
+# ── 2c. repomix — pack a repo into one AI-friendly file + count tokens ───────
+if ! command -v repomix >/dev/null 2>&1; then
+  echo "==> Installing repomix (repo packer + token counter)..."
+  command -v brew >/dev/null 2>&1 && brew install repomix || npm install -g repomix 2>/dev/null || echo "    (skip repomix — install brew or npm)"
+else echo "    repomix already installed ✓"; fi
+
 # ── 3. Ollama + local embedding model (grepai runs 100% locally) ────────────
 if ! command -v ollama >/dev/null 2>&1; then
   echo "==> Installing Ollama..."
@@ -38,7 +50,7 @@ pgrep -f "grepai watch" >/dev/null || (nohup grepai watch >/tmp/grepai-watch.log
 
 # ── 5. Register grepai as an MCP tool for Claude Code ───────────────────────
 if command -v claude >/dev/null 2>&1; then
-  claude mcp list 2>/dev/null | grep -q "^grepai:" || claude mcp add --scope user grepai -- grepai mcp
+  claude mcp list 2>/dev/null | grep -q "^grepai:" || claude mcp add --scope user grepai -- grepai mcp-serve
 fi
 
 # ── 6. Drop in CLAUDE.md + permissions templates (never overwrites) ─────────
@@ -57,23 +69,26 @@ if [ -f "$KIT_DIR/cckit" ]; then
   chmod +x "$KIT_DIR/cckit"
 fi
 
-# ── 8. Create starter memory vault ─────────────────────────────────────────
-MEM_DIR="$PROJECT/.claude/memory"
-mkdir -p "$MEM_DIR"
-[ -f "$MEM_DIR/starter.md" ] || cat > "$MEM_DIR/starter.md" <<'EOF'
-# Project Setup
+# ── 8. Scaffold the Obsidian project brain (never clobbers) ─────────────────
+"$KIT_DIR/cckit" brain || true
 
-Project indexed with grepai. Token savings measured by `cckit status`.
-View full dashboard with `cckit dashboard`.
-EOF
+# ── 9. Install the SessionStart hook script (keeps daemons alive every session)
+cp "$KIT_DIR/templates/ensure-token-stack.sh" ~/.claude/ensure-token-stack.sh 2>/dev/null || true
+if [ -f ~/.claude/settings.json ] && ! grep -q "ensure-token-stack.sh" ~/.claude/settings.json 2>/dev/null; then
+  echo ""
+  echo "⚙️  To auto-start ollama + grepai watch on EVERY session, add this to ~/.claude/settings.json:"
+  echo '   "hooks": { "SessionStart": [ { "hooks": [ { "type": "command", "command": "bash ~/.claude/ensure-token-stack.sh" } ] } ] }'
+fi
 
 echo ""
 echo "✅ Done. Open a NEW Claude Code session in $PROJECT and it will:"
 echo "   - search code semantically via grepai (MCP + CLI) instead of reading files"
+echo "   - use ast-grep for precise structural matches, repomix to pack/count when needed"
 echo "   - compress command output through rtk"
-echo "   - load your CLAUDE.md project brain instead of re-exploring"
+echo "   - load your CLAUDE.md + brain/ instead of re-exploring"
 echo ""
-echo "📊 Token dashboard: run 'cckit dashboard' in $PROJECT to see real savings + system status."
-echo "📝 Add notes: cckit note \"architecture decision\""
+echo "🧠 Project brain: brain/_Home.md  (open the brain/ folder in Obsidian)"
+echo "📊 Token dashboard: run 'cckit dashboard' to see real savings + system status."
+echo "📝 Add notes: cckit note \"architecture decision\"   ·   scaffold more: cckit brain"
 echo ""
 echo "Keep 'grepai watch' running while you work (auto-reindexes on save)."

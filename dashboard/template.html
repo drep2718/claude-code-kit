@@ -87,7 +87,7 @@
 </div>
 
 <script>
-const DATA = /*__DATA__*/ {};
+const DATA = /*__DATA__*/{};
 
 const md = s => (s||"")
   .replace(/&/g,"&amp;").replace(/</g,"&lt;")
@@ -117,12 +117,16 @@ function fmt(n){ return (n||0).toLocaleString(); }
     ["Traces", (bc["trace-callees"]||0)+(bc["trace-callers"]||0)+(bc["trace-graph"]||0), "symbol call graphs"],
   ].map(([b,v,s])=>`<div class="stat"><b>${fmt(v)}</b><span>${b} · ${s}</span></div>`).join("");
 
+  const brain = DATA.brain||{};
   const sys = [
     ["grepai daemon", t.grepai?.watching, t.grepai?.watching?"watching & indexing":"not running → `grepai watch`", t.grepai?.installed],
     ["Ollama + embeddings", t.ollama?.running && t.ollama?.model, t.ollama?.running?(t.ollama?.model?"nomic-embed-text ready":"model missing → `ollama pull nomic-embed-text`"):"not running → `ollama serve`", t.ollama?.installed],
+    ["ast-grep (structural search)", t.astgrep?.installed, t.astgrep?.installed?"installed · `sg -p 'pattern'`":"not installed → `brew install ast-grep`", true],
+    ["repomix (pack + token count)", t.repomix?.installed, t.repomix?.installed?"installed · whole-repo snapshots":"not installed → `brew install repomix`", true],
     ["rtk (output compressor)", t.rtk?.installed, t.rtk?.installed?"installed · prefix noisy commands":"not installed → `brew install rtk`", true],
     ["grepai MCP tool", t.mcp?.registered, t.mcp?.registered?"registered for Claude Code":"run `claude mcp add grepai -- grepai mcp-serve`", true],
-    ["Project brain (CLAUDE.md)", t.claudemd?.present, t.claudemd?.present?"loaded each session":"add a CLAUDE.md", true],
+    ["Project brain (Obsidian vault)", brain.present, brain.present?`${brain.notes||0} notes in brain/ · open in Obsidian`:"scaffold with `cckit brain`", t.obsidian?.installed],
+    ["CLAUDE.md project memory", t.claudemd?.present, t.claudemd?.present?"loaded each session":"add a CLAUDE.md", true],
   ];
   document.getElementById("systems").innerHTML = sys.map(([n,ok,d,inst])=>{
     const cls = !inst?"off":ok?"on":"warn";

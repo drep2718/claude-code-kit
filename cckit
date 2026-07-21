@@ -4,7 +4,14 @@
 #   cckit status      print a quick text status
 #   cckit note "..."  add a note to your memory vault
 set -e
-KIT_DIR="$(cd "$(dirname "$0")" && pwd)"
+# Resolve KIT_DIR through symlinks (cckit is symlinked onto PATH)
+SOURCE="$0"
+while [ -L "$SOURCE" ]; do
+  DIR="$(cd "$(dirname "$SOURCE")" && pwd)"
+  SOURCE="$(readlink "$SOURCE")"
+  [[ "$SOURCE" != /* ]] && SOURCE="$DIR/$SOURCE"
+done
+KIT_DIR="$(cd "$(dirname "$SOURCE")" && pwd)"
 MEM_DIR="${CCKIT_MEMORY:-$KIT_DIR/memory}"
 
 have() { command -v "$1" >/dev/null 2>&1; }
@@ -31,10 +38,12 @@ collect() {
   local mcp="false"
   if have claude; then claude mcp list 2>/dev/null | grep -q "^grepai:" && mcp="true"; fi
 
-  # Memory vault notes
+  # Memory vault notes — prefer the project brain/, fall back to memory dir
+  local NOTES_DIR="$MEM_DIR"
+  [ -d brain ] && NOTES_DIR="$(pwd)/brain"
   local notes="[]"
-  if [ -d "$MEM_DIR" ]; then
-    notes="$(cd "$MEM_DIR" && for f in $(ls *.md 2>/dev/null); do
+  if [ -d "$NOTES_DIR" ]; then
+    notes="$(cd "$NOTES_DIR" && for f in $(ls *.md 2>/dev/null); do
       title="$(head -1 "$f" | sed 's/^#* *//' | sed 's/"/\\"/g')"
       body="$(sed '1d' "$f" | sed 's/\\/\\\\/g; s/"/\\"/g' | awk '{printf "%s\\n", $0}')"
       printf '{"file":"%s","title":"%s","body":"%s"},' "$f" "${title:-$f}" "$body"
@@ -48,19 +57,74 @@ collect() {
   "project": "$(basename "$(pwd)")",
   "tools": {
     "grepai":      { "installed": $(have grepai && echo true || echo false), "watching": $(running "grepai watch") },
+    "astgrep":     { "installed": $(have ast-grep && echo true || echo false) },
+    "repomix":     { "installed": $(have repomix && echo true || echo false) },
     "rtk":         { "installed": $(have rtk && echo true || echo false) },
     "ollama":      { "installed": $(have ollama && echo true || echo false), "running": $(running "ollama serve"), "model": $ollama_model },
+    "obsidian":    { "installed": $([ -d "/Applications/Obsidian.app" ] && echo true || echo false) },
     "mcp":         { "registered": $mcp },
     "claudemd":    { "present": $([ -f CLAUDE.md ] || [ -f AGENTS.md ] && echo true || echo false) }
   },
   "index": { "files": ${indexed:-0} },
+  "brain": { "present": $([ -d brain ] && echo true || echo false), "notes": $(ls brain/*.md 2>/dev/null | wc -l | tr -d ' ') },
   "grepai": $stats,
   "memory": $notes
 }
 JSON
 }
 
+# ── brain: scaffold an Obsidian-compatible project vault ────────────────────
+make_brain() {
+  local root="$(pwd)" name; name="$(basename "$root")"
+  local BRAIN="$root/brain"
+  mkdir -p "$BRAIN"
+
+  # Auto-detect stack signals (best-effort, no network)
+  local stack="" remote="" desc=""
+  [ -f package.json ]    && stack="$stack- Node/JS (package.json)\n"
+  [ -f tsconfig.json ]   && stack="$stack- TypeScript (tsconfig.json)\n"
+  [ -f Cargo.toml ]      && stack="$stack- Rust (Cargo.toml)\n"
+  [ -f go.mod ]          && stack="$stack- Go (go.mod)\n"
+  [ -f requirements.txt ]||[ -f pyproject.toml ] && stack="$stack- Python\n"
+  [ -f next.config.js ]||[ -f next.config.ts ]||[ -f next.config.mjs ] && stack="$stack- Next.js\n"
+  [ -f CMakeLists.txt ]  && stack="$stack- C/C++ (CMake)\n"
+  [ -z "$stack" ] && stack="- (fill in the languages/frameworks)\n"
+  remote="$(git -C "$root" remote get-url origin 2>/dev/null || echo 'no git remote')"
+  desc="$(head -5 README.md 2>/dev/null | grep -vE '^\s*#|^\s*$' | head -1 || echo 'One-line description of this project.')"
+
+  _w() { # write a note only if it does not already exist (never clobber)
+    [ -f "$BRAIN/$1" ] || printf '%b' "$2" > "$BRAIN/$1"
+  }
+
+  _w "_Home.md" "# 🧠 ${name} — Brain\n\n> Map of Content. This vault is the project's long-term memory. Open the \`brain/\` folder in Obsidian (or Foam/Logseq). Claude reads it every session via CLAUDE.md; grepai indexes it for semantic search.\n\n**${desc}**\n\n## Notes\n- [[Architecture]] — how the system fits together\n- [[Decisions]] — why we chose what we chose (ADR-style)\n- [[Glossary]] — domain terms & their meaning\n- [[Backlog]] — what's next / known TODOs\n- [[Sessions]] — running log of what changed and why\n\n## At a glance\n- **Repo:** ${remote}\n- **Root:** \`${root}\`\n\n_Update these notes as the project evolves — cheap for you, huge token savings for every future Claude session._\n"
+
+  _w "Architecture.md" "# Architecture\n\n_Linked from [[_Home]]._\n\n## Stack\n${stack}\n## Components\n- (describe the main modules/services and how they talk)\n\n## Data model\n- (key entities, tables, schemas)\n\n## Non-obvious decisions\n- See [[Decisions]]\n\n## Things NOT to re-derive\n> The whole point: write down what a fresh session would waste tokens rediscovering.\n"
+
+  _w "Decisions.md" "# Decisions (ADR-style)\n\n_Linked from [[_Home]]._\n\nOne short entry per meaningful choice. Format:\n\n## $(date +%Y-%m-%d) — <decision title>\n- **Context:** why this came up\n- **Decision:** what we chose\n- **Why:** the reasoning / alternatives rejected\n- **Affects:** [[Architecture]]\n"
+
+  _w "Glossary.md" "# Glossary\n\n_Linked from [[_Home]]._\n\n- **<term>** — definition, and where it lives in code.\n"
+
+  _w "Backlog.md" "# Backlog\n\n_Linked from [[_Home]]._\n\n## Now\n- [ ] \n\n## Next\n- [ ] \n\n## Someday\n- [ ] \n"
+
+  _w "Sessions.md" "# Session Log\n\n_Linked from [[_Home]]. Append newest at top. Use \`cckit note\` for quick captures._\n\n## $(date +%Y-%m-%d)\n- Brain initialized.\n"
+
+  # Minimal Obsidian config so the graph/wikilinks feel right on first open
+  mkdir -p "$BRAIN/.obsidian"
+  [ -f "$BRAIN/.obsidian/app.json" ] || printf '{\n  "alwaysUpdateLinks": true,\n  "newFileLocation": "current"\n}\n' > "$BRAIN/.obsidian/app.json"
+
+  # Point CLAUDE.md at the brain (append once, never duplicate)
+  if [ -f CLAUDE.md ] && ! grep -q "brain/_Home.md" CLAUDE.md 2>/dev/null; then
+    printf '\n## Project brain\nRead **brain/_Home.md** first — it is the map of this project'"'"'s long-term memory (architecture, decisions, glossary, backlog). Update the relevant note when you learn or change something structural. grepai indexes brain/ so you can `grepai search` it.\n' >> CLAUDE.md
+  fi
+
+  echo "🧠 Brain ready: $BRAIN"
+  echo "   Open in Obsidian:  open -a Obsidian '$BRAIN'   (or File → Open folder as vault)"
+  echo "   Notes: _Home, Architecture, Decisions, Glossary, Backlog, Sessions"
+}
+
 case "${1:-dashboard}" in
+  brain)
+    make_brain ;;
   status)
     collect | grep -E '"(installed|watching|running|model|registered|present|tokens_saved|savings_pct|total_queries)"' ;;
   note)
@@ -73,8 +137,13 @@ case "${1:-dashboard}" in
     out="$KIT_DIR/dashboard/dashboard.html"
     # Inject real data into the template (escape newlines and special chars for sed)
     escaped="$(printf '%s\n' "$data" | sed -e ':a' -e '$!{N;ba' -e '}' -e 's/[&/\]/\\&/g; s/\n/\\n/g')"
-    sed "s|/\*__DATA__\*/|$escaped|" "$KIT_DIR/dashboard/template.html" > "$out"
+    # token includes the {} fallback so it is fully replaced (no dangling literal)
+    sed "s|/\*__DATA__\*/{}|$escaped|" "$KIT_DIR/dashboard/template.html" > "$out"
     echo "Dashboard: $out"
     open "$out" 2>/dev/null || xdg-open "$out" 2>/dev/null || echo "open it manually" ;;
-  *) echo "usage: cckit [dashboard|status|note]" ;;
+  *) echo "usage: cckit [dashboard|status|note|brain]"
+     echo "  dashboard  collect real data + open the visual dashboard"
+     echo "  status     quick text status of the token stack"
+     echo "  note \"..\"  add a timestamped note to the memory vault"
+     echo "  brain      scaffold an Obsidian project vault (brain/) here" ;;
 esac

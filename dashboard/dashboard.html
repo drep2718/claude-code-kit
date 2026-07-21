@@ -88,19 +88,41 @@
 
 <script>
 const DATA = {
-  "generatedAt": "2026-07-20 22:41:12",
-  "project": "claude-code-kit",
+  "generatedAt": "2026-07-20 22:56:28",
+  "project": "all-mountains",
   "tools": {
     "grepai":      { "installed": true, "watching": true },
+    "astgrep":     { "installed": true },
+    "repomix":     { "installed": true },
     "rtk":         { "installed": true },
     "ollama":      { "installed": true, "running": true, "model": true },
+    "obsidian":    { "installed": true },
     "mcp":         { "registered": true },
-    "claudemd":    { "present": false }
+    "claudemd":    { "present": true }
   },
   "index": { "files": 0 },
-  "grepai": {"total_queries":0,"tokens_saved":0,"savings_pct":0,"grep_tokens":0,"output_tokens":0,"by_command_type":{}},
-  "memory": []
-} {};
+  "brain": { "present": true, "notes": 6 },
+  "grepai": {
+  "total_queries": 1,
+  "output_tokens": 2021,
+  "grep_tokens": 15360,
+  "tokens_saved": 13339,
+  "savings_pct": 86.84244791666667,
+  "cost_saved_usd": null,
+  "by_command_type": {
+    "search": 1,
+    "trace-callees": 0,
+    "trace-callers": 0,
+    "trace-graph": 0
+  },
+  "by_output_mode": {
+    "compact": 0,
+    "full": 1,
+    "toon": 0
+  }
+},
+  "memory": [{"file":"Architecture.md","title":"Architecture","body":"\n_Linked from [[_Home]]._\n\n## Stack\n- Next.js 16 App Router · TypeScript · Tailwind v4 (`@theme inline` tokens in globals.css)\n- Supabase — Postgres + PostGIS, Auth (Google OAuth + email), Storage (`Avatars`, `Summit-Photos`)\n- Mapbox GL JS (map, clustering, Static Images API, geocoding)\n- TanStack React Query (30min staleTime cache)\n- Data source: OpenStreetMap Overpass API (authoritative open hiking dataset)\n\n## Components\n- `src/components/Map.tsx` — Mapbox map: peak clustering, iconic gold ★ markers, orange route lines. Has the blank-map fix (ResizeObserver + timed `resize()` nudges).\n- `src/app/explore/page.tsx` — viewport-driven peak/route loading (no radius slider). Supports `?peak=` fly-to and `?route=` isolation. Default center Colorado `[39.63,-106.37]`.\n- `src/app/peaks` / `src/app/routes` — browse pages with filters. `/routes/[id]` detail.\n- `src/lib/filters.ts` + `FilterSheet.tsx` — shared AllTrails-style filter modal (difficulty, length, route type, activity, features).\n- `src/lib/staticMap.ts` — route thumbnails via Mapbox Static API (orange polyline, Google-encoded).\n- `scripts/finish-import.ts` — unified OSM import (tiling, `--routes-only`/`--peaks-only`, geometry simplify cap 1200, batch 25).\n- `scripts/backfill-peak-photos.ts` / `enrich-features.ts` — Wikipedia photos+descriptions, POI feature tagging.\n\n## Data model\n- `peaks` (PostGIS location, `is_iconic`, elevation) · `routes` (geometry JSONB + PostGIS `path`, bbox cols, route_type/est_time) · `route_peaks` junction (via `link_route_peaks(buffer_m)`).\n- `profiles`, `summit_logs`, `peak_lists`, `peak_list_items`. RLS on all. Trigger auto-creates profile.\n- RPCs: `peaks_in_bounds`, `routes_in_bounds`, `nearby_peaks`, `link_route_peaks`.\n\n## Things NOT to re-derive\n- **DB is capped to US / Canada / Switzerland / Japan only** to stay under Supabase free 500MB. NEVER run import with country `ALL`.\n- The `tags` column was dropped — scripts must not insert it.\n- Overpass timeouts return HTTP 200 + empty + a \"remark\" — treat as failure and subdivide the bbox.\n- `.env.local` is never committed (service-role key is scripts-only).\n- Blank map in the sandbox preview is a Mapbox tile/origin quirk — verify maps in real Chrome or the live site.\n- Live at https://all-mountains.vercel.app (Vercel CI/CD from GitHub).\n\nSee [[Decisions]] · [[Glossary]] · [[Backlog]]\n"},{"file":"Backlog.md","title":"Backlog","body":"\n_Linked from [[_Home]]._\n\n## Now\n- [ ] \n\n## Next\n- [ ] \n\n## Someday\n- [ ] \n"},{"file":"Decisions.md","title":"Decisions (ADR-style)","body":"\n_Linked from [[_Home]]._\n\nOne short entry per meaningful choice. Format:\n\n## 2026-07-20 — <decision title>\n- **Context:** why this came up\n- **Decision:** what we chose\n- **Why:** the reasoning / alternatives rejected\n- **Affects:** [[Architecture]]\n"},{"file":"Glossary.md","title":"Glossary","body":"\n_Linked from [[_Home]]._\n\n- **<term>** — definition, and where it lives in code.\n"},{"file":"Sessions.md","title":"Session Log","body":"\n_Linked from [[_Home]]. Append newest at top. Use `cckit note` for quick captures._\n\n## 2026-07-20\n- Brain initialized.\n"},{"file":"_Home.md","title":"🧠 all-mountains — Brain","body":"\n> Map of Content. This vault is the project's long-term memory. Open the `brain/` folder in Obsidian (or Foam/Logseq). Claude reads it every session via CLAUDE.md; grepai indexes it for semantic search.\n\n**Mobile-first PWA for discovering and logging mountain summits — AllTrails meets PeakVisor.**\n\n## Notes\n- [[Architecture]] — how the system fits together\n- [[Decisions]] — why we chose what we chose (ADR-style)\n- [[Glossary]] — domain terms & their meaning\n- [[Backlog]] — what's next / known TODOs\n- [[Sessions]] — running log of what changed and why\n\n## At a glance\n- **Repo:** https://github.com/drep2718/all-mountains.git\n- **Root:** `/Users/aidendrep/PROJECTS/All Mountains/all-mountains`\n\n_Update these notes as the project evolves — cheap for you, huge token savings for every future Claude session._\n"}]
+};
 
 const md = s => (s||"")
   .replace(/&/g,"&amp;").replace(/</g,"&lt;")
@@ -130,12 +152,16 @@ function fmt(n){ return (n||0).toLocaleString(); }
     ["Traces", (bc["trace-callees"]||0)+(bc["trace-callers"]||0)+(bc["trace-graph"]||0), "symbol call graphs"],
   ].map(([b,v,s])=>`<div class="stat"><b>${fmt(v)}</b><span>${b} · ${s}</span></div>`).join("");
 
+  const brain = DATA.brain||{};
   const sys = [
     ["grepai daemon", t.grepai?.watching, t.grepai?.watching?"watching & indexing":"not running → `grepai watch`", t.grepai?.installed],
     ["Ollama + embeddings", t.ollama?.running && t.ollama?.model, t.ollama?.running?(t.ollama?.model?"nomic-embed-text ready":"model missing → `ollama pull nomic-embed-text`"):"not running → `ollama serve`", t.ollama?.installed],
+    ["ast-grep (structural search)", t.astgrep?.installed, t.astgrep?.installed?"installed · `sg -p 'pattern'`":"not installed → `brew install ast-grep`", true],
+    ["repomix (pack + token count)", t.repomix?.installed, t.repomix?.installed?"installed · whole-repo snapshots":"not installed → `brew install repomix`", true],
     ["rtk (output compressor)", t.rtk?.installed, t.rtk?.installed?"installed · prefix noisy commands":"not installed → `brew install rtk`", true],
     ["grepai MCP tool", t.mcp?.registered, t.mcp?.registered?"registered for Claude Code":"run `claude mcp add grepai -- grepai mcp-serve`", true],
-    ["Project brain (CLAUDE.md)", t.claudemd?.present, t.claudemd?.present?"loaded each session":"add a CLAUDE.md", true],
+    ["Project brain (Obsidian vault)", brain.present, brain.present?`${brain.notes||0} notes in brain/ · open in Obsidian`:"scaffold with `cckit brain`", t.obsidian?.installed],
+    ["CLAUDE.md project memory", t.claudemd?.present, t.claudemd?.present?"loaded each session":"add a CLAUDE.md", true],
   ];
   document.getElementById("systems").innerHTML = sys.map(([n,ok,d,inst])=>{
     const cls = !inst?"off":ok?"on":"warn";
