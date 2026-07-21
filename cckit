@@ -1,0 +1,80 @@
+#!/bin/bash
+# cckit — status + dashboard for your token-saving Claude Code stack.
+#   cckit dashboard   collect real data and open the visual dashboard
+#   cckit status      print a quick text status
+#   cckit note "..."  add a note to your memory vault
+set -e
+KIT_DIR="$(cd "$(dirname "$0")" && pwd)"
+MEM_DIR="${CCKIT_MEMORY:-$KIT_DIR/memory}"
+
+have() { command -v "$1" >/dev/null 2>&1; }
+running() { pgrep -f "$1" >/dev/null 2>&1 && echo true || echo false; }
+
+collect() {
+  # Real grepai token savings for the current project (falls back to zeros)
+  local stats='{"total_queries":0,"tokens_saved":0,"savings_pct":0,"grep_tokens":0,"output_tokens":0,"by_command_type":{}}'
+  if have grepai && [ -d .grepai ]; then
+    stats="$(grepai stats --json 2>/dev/null || echo "$stats")"
+  fi
+
+  # grepai index status (files indexed)
+  local indexed=0
+  if have grepai && [ -d .grepai ]; then
+    indexed="$(grepai status 2>/dev/null | grep -oiE '[0-9]+ (files|indexed)' | grep -oE '[0-9]+' | head -1 || echo 0)"
+  fi
+
+  # Ollama model present?
+  local ollama_model="false"
+  if have ollama; then ollama list 2>/dev/null | grep -q nomic-embed-text && ollama_model="true"; fi
+
+  # MCP registered for Claude Code?
+  local mcp="false"
+  if have claude; then claude mcp list 2>/dev/null | grep -q "^grepai:" && mcp="true"; fi
+
+  # Memory vault notes
+  local notes="[]"
+  if [ -d "$MEM_DIR" ]; then
+    notes="$(cd "$MEM_DIR" && for f in $(ls *.md 2>/dev/null); do
+      title="$(head -1 "$f" | sed 's/^#* *//' | sed 's/"/\\"/g')"
+      body="$(sed '1d' "$f" | sed 's/\\/\\\\/g; s/"/\\"/g' | awk '{printf "%s\\n", $0}')"
+      printf '{"file":"%s","title":"%s","body":"%s"},' "$f" "${title:-$f}" "$body"
+    done | sed 's/,$//')"
+    notes="[${notes}]"
+  fi
+
+  cat <<JSON
+{
+  "generatedAt": "$(date '+%Y-%m-%d %H:%M:%S')",
+  "project": "$(basename "$(pwd)")",
+  "tools": {
+    "grepai":      { "installed": $(have grepai && echo true || echo false), "watching": $(running "grepai watch") },
+    "rtk":         { "installed": $(have rtk && echo true || echo false) },
+    "ollama":      { "installed": $(have ollama && echo true || echo false), "running": $(running "ollama serve"), "model": $ollama_model },
+    "mcp":         { "registered": $mcp },
+    "claudemd":    { "present": $([ -f CLAUDE.md ] || [ -f AGENTS.md ] && echo true || echo false) }
+  },
+  "index": { "files": ${indexed:-0} },
+  "grepai": $stats,
+  "memory": $notes
+}
+JSON
+}
+
+case "${1:-dashboard}" in
+  status)
+    collect | grep -E '"(installed|watching|running|model|registered|present|tokens_saved|savings_pct|total_queries)"' ;;
+  note)
+    shift; title="$*"; [ -z "$title" ] && { echo "usage: cckit note \"your note\""; exit 1; }
+    mkdir -p "$MEM_DIR"; f="$MEM_DIR/$(date +%Y%m%d-%H%M%S).md"
+    printf "# %s\n\n_%s_\n\n" "$title" "$(date)" > "$f"
+    echo "saved $f (edit to add detail)" ;;
+  dashboard|"")
+    data="$(collect)"
+    out="$KIT_DIR/dashboard/dashboard.html"
+    # Inject real data into the template (escape newlines and special chars for sed)
+    escaped="$(printf '%s\n' "$data" | sed -e ':a' -e '$!{N;ba' -e '}' -e 's/[&/\]/\\&/g; s/\n/\\n/g')"
+    sed "s|/\*__DATA__\*/|$escaped|" "$KIT_DIR/dashboard/template.html" > "$out"
+    echo "Dashboard: $out"
+    open "$out" 2>/dev/null || xdg-open "$out" 2>/dev/null || echo "open it manually" ;;
+  *) echo "usage: cckit [dashboard|status|note]" ;;
+esac

@@ -1,0 +1,144 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>claude-code-kit · dashboard</title>
+<style>
+  :root{
+    --bg:#0c0f14; --panel:#141922; --panel2:#1b2230; --border:#242c3a;
+    --ink:#e8edf5; --muted:#8b97a8; --faint:#5b6577;
+    --green:#4ade80; --amber:#fbbf24; --red:#f87171; --accent:#6ea8fe; --violet:#a78bfa;
+    --mono:ui-monospace,"SF Mono",Menlo,monospace;
+    --sans:-apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif;
+  }
+  *{box-sizing:border-box}
+  body{margin:0;background:radial-gradient(1200px 600px at 20% -10%,#141b2b 0,var(--bg) 60%);color:var(--ink);font-family:var(--sans);-webkit-font-smoothing:antialiased}
+  .wrap{max-width:1080px;margin:0 auto;padding:32px 20px 64px}
+  header{display:flex;align-items:baseline;justify-content:space-between;flex-wrap:wrap;gap:8px;margin-bottom:28px}
+  h1{font-size:20px;margin:0;letter-spacing:-.01em}
+  h1 span{color:var(--accent)}
+  .meta{color:var(--faint);font-size:12px;font-family:var(--mono)}
+  .hero{display:grid;grid-template-columns:1.3fr 1fr;gap:16px;margin-bottom:16px}
+  @media(max-width:720px){.hero{grid-template-columns:1fr}}
+  .card{background:linear-gradient(180deg,var(--panel),var(--panel2));border:1px solid var(--border);border-radius:16px;padding:20px}
+  .big{font-size:52px;font-weight:700;font-family:var(--mono);letter-spacing:-.03em;line-height:1;background:linear-gradient(90deg,var(--green),#86efac);-webkit-background-clip:text;background-clip:text;color:transparent}
+  .label{color:var(--muted);font-size:12px;text-transform:uppercase;letter-spacing:.08em;margin-bottom:8px}
+  .sub{color:var(--faint);font-size:13px;margin-top:10px;line-height:1.5}
+  .ring{--p:0;width:120px;height:120px;border-radius:50%;background:conic-gradient(var(--green) calc(var(--p)*1%),#222b3a 0);display:grid;place-items:center;margin:4px auto 0}
+  .ring div{width:92px;height:92px;border-radius:50%;background:var(--panel2);display:grid;place-items:center;font-family:var(--mono);font-size:22px;font-weight:700}
+  .grid3{display:grid;grid-template-columns:repeat(3,1fr);gap:12px;margin-bottom:16px}
+  @media(max-width:720px){.grid3{grid-template-columns:1fr 1fr}}
+  .stat{background:var(--panel);border:1px solid var(--border);border-radius:12px;padding:14px}
+  .stat b{font-family:var(--mono);font-size:22px;display:block}
+  .stat span{color:var(--faint);font-size:12px}
+  .section-title{font-size:13px;text-transform:uppercase;letter-spacing:.08em;color:var(--muted);margin:26px 0 12px}
+  .rows{display:flex;flex-direction:column;gap:8px}
+  .row{display:flex;align-items:center;gap:12px;background:var(--panel);border:1px solid var(--border);border-radius:12px;padding:12px 14px}
+  .dot{width:9px;height:9px;border-radius:50%;flex:none}
+  .on{background:var(--green);box-shadow:0 0 0 3px rgba(74,222,128,.15)}
+  .off{background:var(--red);box-shadow:0 0 0 3px rgba(248,113,113,.12)}
+  .warn{background:var(--amber);box-shadow:0 0 0 3px rgba(251,191,36,.12)}
+  .row .name{font-weight:600;font-size:14px}
+  .row .desc{color:var(--faint);font-size:12px;margin-top:2px}
+  .row .val{margin-left:auto;font-family:var(--mono);font-size:12px;color:var(--muted)}
+  .mem{display:grid;grid-template-columns:repeat(2,1fr);gap:12px}
+  @media(max-width:720px){.mem{grid-template-columns:1fr}}
+  .note{background:var(--panel);border:1px solid var(--border);border-radius:12px;padding:14px 16px}
+  .note h4{margin:0 0 6px;font-size:14px;color:var(--violet)}
+  .note .file{font-family:var(--mono);font-size:11px;color:var(--faint);margin-bottom:8px}
+  .note p{margin:4px 0;font-size:13px;color:var(--muted);line-height:1.5}
+  .note code{font-family:var(--mono);background:#0d1119;padding:1px 5px;border-radius:5px;font-size:12px;color:#c9d4e5}
+  .foot{color:var(--faint);font-size:12px;line-height:1.7;margin-top:28px;border-top:1px solid var(--border);padding-top:16px}
+  .bar{height:6px;border-radius:6px;background:#222b3a;overflow:hidden;margin-top:12px}
+  .bar i{display:block;height:100%;background:linear-gradient(90deg,var(--green),#86efac)}
+</style>
+</head>
+<body>
+<div class="wrap">
+  <header>
+    <h1>⚡ claude-code-<span>kit</span> · dashboard</h1>
+    <span class="meta" id="meta"></span>
+  </header>
+
+  <div class="hero">
+    <div class="card">
+      <div class="label">Tokens saved (this project, measured by grepai)</div>
+      <div class="big" id="saved">—</div>
+      <div class="bar"><i id="bar" style="width:0%"></i></div>
+      <div class="sub" id="savedSub"></div>
+    </div>
+    <div class="card">
+      <div class="label">Search efficiency</div>
+      <div class="ring" id="ring"><div id="pct">—</div></div>
+      <div class="sub" style="text-align:center">avg reduction vs raw grep/file reads</div>
+    </div>
+  </div>
+
+  <div class="grid3" id="stats"></div>
+
+  <div class="section-title">Systems</div>
+  <div class="rows" id="systems"></div>
+
+  <div class="section-title">Memory vault (Obsidian-style)</div>
+  <div class="mem" id="memory"></div>
+
+  <div class="foot" id="foot"></div>
+</div>
+
+<script>
+const DATA = /*__DATA__*/ {};
+
+const md = s => (s||"")
+  .replace(/&/g,"&amp;").replace(/</g,"&lt;")
+  .replace(/`([^`]+)`/g,"<code>$1</code>")
+  .replace(/\*\*([^*]+)\*\*/g,"<b>$1</b>")
+  .replace(/\[\[([^\]]+)\]\]/g,'<code>$1</code>')
+  .split(/\\n/).map(l=>l.trim()).filter(Boolean)
+  .map(l=> l.startsWith("- ")? "• "+l.slice(2): l).join("<br>");
+
+function fmt(n){ return (n||0).toLocaleString(); }
+
+(function render(){
+  const g = DATA.grepai||{}, t = DATA.tools||{};
+  document.getElementById("meta").textContent = `${DATA.project||"project"} · ${DATA.generatedAt||""}`;
+  document.getElementById("saved").textContent = fmt(g.tokens_saved);
+  const pct = Math.round(g.savings_pct||0);
+  document.getElementById("bar").style.width = pct+"%";
+  document.getElementById("savedSub").innerHTML =
+    `Across <b>${fmt(g.total_queries)}</b> semantic searches — returned <b>${fmt(g.output_tokens)}</b> tokens instead of an estimated <b>${fmt(g.grep_tokens)}</b> from raw grep/file reads.`;
+  document.getElementById("ring").style.setProperty("--p", pct);
+  document.getElementById("pct").textContent = pct+"%";
+
+  const bc = g.by_command_type||{};
+  document.getElementById("stats").innerHTML = [
+    ["Searches", g.total_queries||0, "semantic queries run"],
+    ["Files indexed", DATA.index?.files||0, "in the local vector index"],
+    ["Traces", (bc["trace-callees"]||0)+(bc["trace-callers"]||0)+(bc["trace-graph"]||0), "symbol call graphs"],
+  ].map(([b,v,s])=>`<div class="stat"><b>${fmt(v)}</b><span>${b} · ${s}</span></div>`).join("");
+
+  const sys = [
+    ["grepai daemon", t.grepai?.watching, t.grepai?.watching?"watching & indexing":"not running → `grepai watch`", t.grepai?.installed],
+    ["Ollama + embeddings", t.ollama?.running && t.ollama?.model, t.ollama?.running?(t.ollama?.model?"nomic-embed-text ready":"model missing → `ollama pull nomic-embed-text`"):"not running → `ollama serve`", t.ollama?.installed],
+    ["rtk (output compressor)", t.rtk?.installed, t.rtk?.installed?"installed · prefix noisy commands":"not installed → `brew install rtk`", true],
+    ["grepai MCP tool", t.mcp?.registered, t.mcp?.registered?"registered for Claude Code":"run `claude mcp add grepai -- grepai mcp-serve`", true],
+    ["Project brain (CLAUDE.md)", t.claudemd?.present, t.claudemd?.present?"loaded each session":"add a CLAUDE.md", true],
+  ];
+  document.getElementById("systems").innerHTML = sys.map(([n,ok,d,inst])=>{
+    const cls = !inst?"off":ok?"on":"warn";
+    return `<div class="row"><span class="dot ${cls}"></span><div><div class="name">${n}</div><div class="desc">${md(d)}</div></div><span class="val">${!inst?"missing":ok?"active":"idle"}</span></div>`;
+  }).join("");
+
+  const notes = DATA.memory||[];
+  document.getElementById("memory").innerHTML = notes.length
+    ? notes.map(n=>`<div class="note"><div class="file">${n.file}</div><h4>${n.title||n.file}</h4><p>${md(n.body)}</p></div>`).join("")
+    : `<div class="note"><p>No notes yet. Add one: <code>cckit note "architecture decision"</code></p></div>`;
+
+  document.getElementById("foot").innerHTML =
+    "Token savings above are <b>measured by grepai</b> (output tokens vs. estimated raw-grep tokens for the same queries) — not an estimate. " +
+    "rtk savings happen per-command and aren't aggregated here. The biggest structural saver is a good CLAUDE.md, which reduces re-exploration every session. " +
+    "Regenerate anytime with <code>cckit dashboard</code>.";
+})();
+</script>
+</body>
+</html>

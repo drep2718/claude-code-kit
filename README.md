@@ -26,11 +26,32 @@ That's it. Open a new Claude Code session and it's active.
 - Tools some blog posts recommend that we could **not verify exist** (e.g. "Repowise") are deliberately excluded. Everything here installs from Homebrew or official taps.
 - `grepai watch` must be running to keep the index fresh: the installer starts it, but after a reboot run it again (or add it to your shell profile / login items).
 
+## Dashboard: See your actual token savings
+
+Run this from your project after install:
+
+```bash
+cckit dashboard          # opens a visual dashboard showing:
+                         # • Real measured token savings (from grepai stats)
+                         # • System status (grepai/ollama/rtk/MCP running?)
+                         # • Files indexed, search count, efficiency %
+                         # • Memory vault (your project notes)
+```
+
+The dashboard is self-contained HTML (no network needed) and regenerates each time you run it — it always shows live data.
+
+Quick status check: `cckit status`
+
+Add notes to your memory vault: `cckit note "why we use this pattern"`
+
 ## What's in the box
 
 ```
 claude-code-kit/
 ├── install.sh              # idempotent, never overwrites your files
+├── cckit                   # dashboard CLI (symlinked to ~/.local/bin on install)
+├── dashboard/
+│   └── template.html       # self-contained dashboard template (injected with live data)
 └── templates/
     ├── CLAUDE.md           # project-brain template (fill in the <blanks>)
     └── settings.json       # safe read-only permissions allowlist

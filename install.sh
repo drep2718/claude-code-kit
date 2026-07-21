@@ -46,10 +46,34 @@ fi
 mkdir -p .claude
 [ -f .claude/settings.json ] || cp "$KIT_DIR/templates/settings.json" .claude/settings.json
 
+# ── 7. Symlink cckit CLI to PATH ────────────────────────────────────────────
+if [ -f "$KIT_DIR/cckit" ]; then
+  BIN_PATH="${HOME}/.local/bin"
+  mkdir -p "$BIN_PATH"
+  ln -sf "$KIT_DIR/cckit" "$BIN_PATH/cckit"
+  if [[ ":$PATH:" != *":$BIN_PATH:"* ]]; then
+    echo "    Add $BIN_PATH to your PATH: export PATH=$BIN_PATH:\$PATH"
+  fi
+  chmod +x "$KIT_DIR/cckit"
+fi
+
+# ── 8. Create starter memory vault ─────────────────────────────────────────
+MEM_DIR="$PROJECT/.claude/memory"
+mkdir -p "$MEM_DIR"
+[ -f "$MEM_DIR/starter.md" ] || cat > "$MEM_DIR/starter.md" <<'EOF'
+# Project Setup
+
+Project indexed with grepai. Token savings measured by `cckit status`.
+View full dashboard with `cckit dashboard`.
+EOF
+
 echo ""
 echo "✅ Done. Open a NEW Claude Code session in $PROJECT and it will:"
 echo "   - search code semantically via grepai (MCP + CLI) instead of reading files"
 echo "   - compress command output through rtk"
 echo "   - load your CLAUDE.md project brain instead of re-exploring"
+echo ""
+echo "📊 Token dashboard: run 'cckit dashboard' in $PROJECT to see real savings + system status."
+echo "📝 Add notes: cckit note \"architecture decision\""
 echo ""
 echo "Keep 'grepai watch' running while you work (auto-reindexes on save)."
