@@ -20,9 +20,15 @@ if [ -n "$used" ] && [ -n "$window" ] && [ "$window" -gt 0 ] 2>/dev/null; then
   pct=$(( used * 100 / window ))
   bar=""; filled=$(( pct / 10 ))
   for i in $(seq 1 10); do [ "$i" -le "$filled" ] && bar="${bar}█" || bar="${bar}·"; done
-  # color: green <60, yellow <85, red otherwise
-  if [ "$pct" -ge 85 ]; then c=$'\e[31m'; elif [ "$pct" -ge 60 ]; then c=$'\e[33m'; else c=$'\e[32m'; fi
-  ctx=" · ${c}ctx ${bar} ${pct}%\e[0m"
+  # color + call-to-action: green <60, yellow 60-85 (compact soon), red 85+ (compact NOW)
+  if [ "$pct" -ge 85 ]; then
+    c=$'\e[1;31m'; cta=" ⚠ /compact NOW"
+  elif [ "$pct" -ge 60 ]; then
+    c=$'\e[1;33m'; cta=" → /compact"
+  else
+    c=$'\e[32m'; cta=""
+  fi
+  ctx=" · ${c}ctx ${bar} ${pct}%${cta}\e[0m"
 elif [ "$exceeds" = "true" ]; then
   ctx=" · \e[31mctx >200k — /compact soon\e[0m"
 fi

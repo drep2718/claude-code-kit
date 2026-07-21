@@ -5,11 +5,16 @@
 
 # Operating rules — every session, every repo
 
-## 1 · Search, don't brute-force read
+## 1 · Explore with SUBAGENTS — this is the #1 token rule (standing user directive)
+- ANY exploration/investigation ("how does X work", "where is Y", "find all Z", tracing a bug across files, understanding an unfamiliar area) → **spawn a subagent** (Task/Explore) to do it.
+- The subagent reads the files in ITS OWN context and returns only a short summary. Those file-reads never enter my window — so when it finishes, those tokens are gone for good. Use its summary and CONTINUE; do not re-read what it already covered.
+- I do NOT need to ask permission to spawn an exploration subagent — the user has standing-authorized it. Prefer `Explore`/`general-purpose` on Haiku (`CLAUDE_CODE_SUBAGENT_MODEL=haiku`).
+- Only read files directly in the main context when I already know the exact file+lines to edit.
+
+## 1b · Search, don't brute-force read
 - Find code by MEANING with `grepai search "question"` (or the grepai MCP) BEFORE opening files.
 - Find code by SHAPE with `ast-grep` / `sg -p 'pattern'` (e.g. `sg -p 'useEffect($$$)'`).
 - Whole-repo view or token count → `repomix`. Reading files is the LAST resort.
-- Wide/unscoped investigation → delegate to a **subagent** so its file reads never enter my context.
 - NEVER cat lockfiles, logs, `node_modules`, build output, or binaries. Filter or `rtk` them.
 
 ## 2 · Read the brain first
@@ -27,9 +32,10 @@
 - Or filter: `<cmd> 2>&1 | grep -E 'FAIL|ERROR|warning' | head -50`.
 
 ## 5 · Manage context aggressively
-- Multi-file or unfamiliar work → plan first. One-line fix → just do it (skip planning overhead).
-- Batch related edits; don't re-read a file I just edited.
+- **New project or multi-file/unfamiliar work → ALWAYS use plan mode first** (explore via subagents, then a written plan, then implement). One-line fix / exact known edit → just do it, skip planning.
+- **Proactively tell the user to `/compact` once context reaches ~60%** (the statusline turns yellow at 60%, red at 85%). Don't wait for the limit. When I notice a session getting long or right after heavy exploration, say so explicitly: "Context ~60% — good time to `/compact`; I'll preserve modified files, commands, and open decisions."
 - On `/compact`, ALWAYS preserve: the modified-file list, test/build commands, and open decisions.
+- Batch related edits; don't re-read a file I just edited.
 - Between unrelated tasks, tell the user to `/clear`. After 2 failed corrections, suggest a fresh session.
 
 ## 6 · Verify, then stop — never assert success
