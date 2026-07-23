@@ -41,6 +41,9 @@ is_project() {
       echo "brain scaffolded for $(pwd)"
     fi
   fi
+
+  # 4. Refresh cross-session token usage markdown (backgrounded).
+  if have cckit; then cckit usage >/dev/null 2>&1 & fi
 } >>"$LOG" 2>&1 &
 
 # Never block or pollute the session; the hook returns immediately.

@@ -24,6 +24,12 @@ collect() {
     stats="$(grepai stats --json 2>/dev/null || echo "$stats")"
   fi
 
+  # Cross-session token usage parsed from ~/.claude/projects transcripts (also writes token-usage.md)
+  local usage='{}'
+  if have python3 && [ -f "$KIT_DIR/usage.py" ]; then
+    usage="$(python3 "$KIT_DIR/usage.py" 2>/dev/null || echo '{}')"
+  fi
+
   # grepai index status (files indexed)
   local indexed=0
   if have grepai && [ -d .grepai ]; then
@@ -68,6 +74,7 @@ collect() {
   "index": { "files": ${indexed:-0} },
   "brain": { "present": $([ -d brain ] && echo true || echo false), "notes": $(ls brain/*.md 2>/dev/null | wc -l | tr -d ' ') },
   "grepai": $stats,
+  "usage": $usage,
   "memory": $notes
 }
 JSON
@@ -167,6 +174,10 @@ IGN
 case "${1:-dashboard}" in
   brain)
     make_brain ;;
+  usage)
+    if have python3 && [ -f "$KIT_DIR/usage.py" ]; then
+      python3 "$KIT_DIR/usage.py" >/dev/null && echo "Wrote ~/.claude/token-usage.md" && command -v bat >/dev/null && bat ~/.claude/token-usage.md || sed -n '1,12p' ~/.claude/token-usage.md
+    else echo "needs python3"; fi ;;
   status)
     collect | grep -E '"(installed|watching|running|model|registered|present|tokens_saved|savings_pct|total_queries)"' ;;
   note)
@@ -177,15 +188,21 @@ case "${1:-dashboard}" in
   dashboard|"")
     data="$(collect)"
     out="$KIT_DIR/dashboard/dashboard.html"
-    # Inject real data into the template (escape newlines and special chars for sed)
-    escaped="$(printf '%s\n' "$data" | sed -e ':a' -e '$!{N;ba' -e '}' -e 's/[&/\]/\\&/g; s/\n/\\n/g')"
-    # token includes the {} fallback so it is fully replaced (no dangling literal)
-    sed "s|/\*__DATA__\*/{}|$escaped|" "$KIT_DIR/dashboard/template.html" > "$out"
+    # Inject real data into the template. Python does a literal string replace of the
+    # {}-terminated token — robust against any JSON content (paths, quotes, newlines)
+    # where sed's delimiter/escaping was fragile.
+    DATA_JSON="$data" python3 - "$KIT_DIR/dashboard/template.html" "$out" <<'PY'
+import os, sys
+tpl, out = sys.argv[1], sys.argv[2]
+html = open(tpl).read().replace("/*__DATA__*/{}", os.environ["DATA_JSON"], 1)
+open(out, "w").write(html)
+PY
     echo "Dashboard: $out"
     open "$out" 2>/dev/null || xdg-open "$out" 2>/dev/null || echo "open it manually" ;;
-  *) echo "usage: cckit [dashboard|status|note|brain]"
+  *) echo "usage: cckit [dashboard|status|note|brain|usage]"
      echo "  dashboard  collect real data + open the visual dashboard"
      echo "  status     quick text status of the token stack"
      echo "  note \"..\"  add a timestamped note to the memory vault"
-     echo "  brain      scaffold an Obsidian project vault (brain/) here" ;;
+     echo "  brain      scaffold an Obsidian project vault (brain/) here"
+     echo "  usage      write ~/.claude/token-usage.md (cross-session tokens)" ;;
 esac

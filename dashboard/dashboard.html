@@ -52,6 +52,22 @@
   .foot{color:var(--faint);font-size:12px;line-height:1.7;margin-top:28px;border-top:1px solid var(--border);padding-top:16px}
   .bar{height:6px;border-radius:6px;background:#222b3a;overflow:hidden;margin-top:12px}
   .bar i{display:block;height:100%;background:linear-gradient(90deg,var(--green),#86efac)}
+  .usage-tot{display:flex;flex-wrap:wrap;gap:24px;margin-bottom:18px}
+  .usage-tot div span{display:block;color:var(--faint);font-size:11px;text-transform:uppercase;letter-spacing:.06em}
+  .usage-tot div b{font-family:var(--mono);font-size:24px}
+  .chart{display:flex;align-items:flex-end;gap:3px;height:120px;padding-top:6px}
+  .chart .col{flex:1;display:flex;flex-direction:column;justify-content:flex-end;align-items:center;height:100%;position:relative}
+  .chart .col i{width:100%;max-width:22px;border-radius:3px 3px 0 0;background:linear-gradient(180deg,var(--accent),#3f6dc0);min-height:2px;transition:height .3s}
+  .chart .col:hover i{background:linear-gradient(180deg,#86efac,var(--green))}
+  .chart .col em{position:absolute;bottom:-16px;font-style:normal;color:var(--faint);font-size:9px;font-family:var(--mono);white-space:nowrap}
+  .chart .col .tip{position:absolute;top:-30px;background:#000;border:1px solid var(--border);border-radius:6px;padding:3px 7px;font-size:11px;font-family:var(--mono);white-space:nowrap;opacity:0;pointer-events:none;transition:opacity .15s;z-index:5}
+  .chart .col:hover .tip{opacity:1}
+  .projs{margin-top:28px;display:flex;flex-direction:column;gap:6px}
+  .projs .prow{display:flex;align-items:center;gap:10px;font-size:13px}
+  .projs .prow .nm{color:var(--ink);width:200px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+  .projs .prow .track{flex:1;height:8px;border-radius:6px;background:#222b3a;overflow:hidden}
+  .projs .prow .track i{display:block;height:100%;background:linear-gradient(90deg,var(--violet),var(--accent))}
+  .projs .prow .amt{font-family:var(--mono);font-size:12px;color:var(--muted);width:100px;text-align:right}
 </style>
 </head>
 <body>
@@ -77,6 +93,14 @@
 
   <div class="grid3" id="stats"></div>
 
+  <div class="section-title">Token usage · across all sessions</div>
+  <div class="card" id="usageCard">
+    <div class="usage-tot" id="usageTot"></div>
+    <div class="chart" id="chart"></div>
+    <div class="projs" id="projs"></div>
+    <div class="sub" id="usageNote"></div>
+  </div>
+
   <div class="section-title">Systems</div>
   <div class="rows" id="systems"></div>
 
@@ -88,7 +112,7 @@
 
 <script>
 const DATA = {
-  "generatedAt": "2026-07-20 22:56:28",
+  "generatedAt": "2026-07-22 22:12:36",
   "project": "all-mountains",
   "tools": {
     "grepai":      { "installed": true, "watching": true },
@@ -101,7 +125,7 @@ const DATA = {
     "claudemd":    { "present": true }
   },
   "index": { "files": 0 },
-  "brain": { "present": true, "notes": 6 },
+  "brain": { "present": true, "notes": 7 },
   "grepai": {
   "total_queries": 1,
   "output_tokens": 2021,
@@ -121,7 +145,8 @@ const DATA = {
     "toon": 0
   }
 },
-  "memory": [{"file":"Architecture.md","title":"Architecture","body":"\n_Linked from [[_Home]]._\n\n## Stack\n- Next.js 16 App Router · TypeScript · Tailwind v4 (`@theme inline` tokens in globals.css)\n- Supabase — Postgres + PostGIS, Auth (Google OAuth + email), Storage (`Avatars`, `Summit-Photos`)\n- Mapbox GL JS (map, clustering, Static Images API, geocoding)\n- TanStack React Query (30min staleTime cache)\n- Data source: OpenStreetMap Overpass API (authoritative open hiking dataset)\n\n## Components\n- `src/components/Map.tsx` — Mapbox map: peak clustering, iconic gold ★ markers, orange route lines. Has the blank-map fix (ResizeObserver + timed `resize()` nudges).\n- `src/app/explore/page.tsx` — viewport-driven peak/route loading (no radius slider). Supports `?peak=` fly-to and `?route=` isolation. Default center Colorado `[39.63,-106.37]`.\n- `src/app/peaks` / `src/app/routes` — browse pages with filters. `/routes/[id]` detail.\n- `src/lib/filters.ts` + `FilterSheet.tsx` — shared AllTrails-style filter modal (difficulty, length, route type, activity, features).\n- `src/lib/staticMap.ts` — route thumbnails via Mapbox Static API (orange polyline, Google-encoded).\n- `scripts/finish-import.ts` — unified OSM import (tiling, `--routes-only`/`--peaks-only`, geometry simplify cap 1200, batch 25).\n- `scripts/backfill-peak-photos.ts` / `enrich-features.ts` — Wikipedia photos+descriptions, POI feature tagging.\n\n## Data model\n- `peaks` (PostGIS location, `is_iconic`, elevation) · `routes` (geometry JSONB + PostGIS `path`, bbox cols, route_type/est_time) · `route_peaks` junction (via `link_route_peaks(buffer_m)`).\n- `profiles`, `summit_logs`, `peak_lists`, `peak_list_items`. RLS on all. Trigger auto-creates profile.\n- RPCs: `peaks_in_bounds`, `routes_in_bounds`, `nearby_peaks`, `link_route_peaks`.\n\n## Things NOT to re-derive\n- **DB is capped to US / Canada / Switzerland / Japan only** to stay under Supabase free 500MB. NEVER run import with country `ALL`.\n- The `tags` column was dropped — scripts must not insert it.\n- Overpass timeouts return HTTP 200 + empty + a \"remark\" — treat as failure and subdivide the bbox.\n- `.env.local` is never committed (service-role key is scripts-only).\n- Blank map in the sandbox preview is a Mapbox tile/origin quirk — verify maps in real Chrome or the live site.\n- Live at https://all-mountains.vercel.app (Vercel CI/CD from GitHub).\n\nSee [[Decisions]] · [[Glossary]] · [[Backlog]]\n"},{"file":"Backlog.md","title":"Backlog","body":"\n_Linked from [[_Home]]._\n\n## Now\n- [ ] \n\n## Next\n- [ ] \n\n## Someday\n- [ ] \n"},{"file":"Decisions.md","title":"Decisions (ADR-style)","body":"\n_Linked from [[_Home]]._\n\nOne short entry per meaningful choice. Format:\n\n## 2026-07-20 — <decision title>\n- **Context:** why this came up\n- **Decision:** what we chose\n- **Why:** the reasoning / alternatives rejected\n- **Affects:** [[Architecture]]\n"},{"file":"Glossary.md","title":"Glossary","body":"\n_Linked from [[_Home]]._\n\n- **<term>** — definition, and where it lives in code.\n"},{"file":"Sessions.md","title":"Session Log","body":"\n_Linked from [[_Home]]. Append newest at top. Use `cckit note` for quick captures._\n\n## 2026-07-20\n- Brain initialized.\n"},{"file":"_Home.md","title":"🧠 all-mountains — Brain","body":"\n> Map of Content. This vault is the project's long-term memory. Open the `brain/` folder in Obsidian (or Foam/Logseq). Claude reads it every session via CLAUDE.md; grepai indexes it for semantic search.\n\n**Mobile-first PWA for discovering and logging mountain summits — AllTrails meets PeakVisor.**\n\n## Notes\n- [[Architecture]] — how the system fits together\n- [[Decisions]] — why we chose what we chose (ADR-style)\n- [[Glossary]] — domain terms & their meaning\n- [[Backlog]] — what's next / known TODOs\n- [[Sessions]] — running log of what changed and why\n\n## At a glance\n- **Repo:** https://github.com/drep2718/all-mountains.git\n- **Root:** `/Users/aidendrep/PROJECTS/All Mountains/all-mountains`\n\n_Update these notes as the project evolves — cheap for you, huge token savings for every future Claude session._\n"}]
+  "usage": {"generatedAt": "2026-07-22 22:12:33", "totals": {"in": 539627, "out": 5829712, "cache": 2014468465, "total": 2020837804, "sessions": 16, "msgs": 6206, "cost": 1025.75}, "days": [{"day": "2026-04-29", "in": 103, "out": 178896, "cache": 1464171, "total": 1643170, "sessions": 1, "msgs": 25, "cost": 3.46}, {"day": "2026-05-01", "in": 503, "out": 148485, "cache": 22791027, "total": 22940015, "sessions": 1, "msgs": 231, "cost": 11.59}, {"day": "2026-05-18", "in": 554, "out": 562899, "cache": 34155793, "total": 34719246, "sessions": 1, "msgs": 375, "cost": 23.64}, {"day": "2026-06-11", "in": 4728, "out": 64503, "cache": 2411940, "total": 2481171, "sessions": 1, "msgs": 59, "cost": 1.92}, {"day": "2026-06-16", "in": 229, "out": 64600, "cache": 12316879, "total": 12381708, "sessions": 3, "msgs": 137, "cost": 6.37}, {"day": "2026-06-20", "in": 26, "out": 73611, "cache": 535068, "total": 608705, "sessions": 1, "msgs": 14, "cost": 1.51}, {"day": "2026-06-21", "in": 259, "out": 202089, "cache": 19201204, "total": 19403552, "sessions": 1, "msgs": 169, "cost": 10.89}, {"day": "2026-06-24", "in": 41, "out": 10195, "cache": 3632705, "total": 3642941, "sessions": 1, "msgs": 38, "cost": 1.94}, {"day": "2026-06-25", "in": 213, "out": 92632, "cache": 20501591, "total": 20594436, "sessions": 1, "msgs": 191, "cost": 8.51}, {"day": "2026-06-27", "in": 219, "out": 164724, "cache": 17695428, "total": 17860371, "sessions": 1, "msgs": 166, "cost": 9.29}, {"day": "2026-06-28", "in": 12, "out": 12280, "cache": 136676, "total": 148968, "sessions": 1, "msgs": 4, "cost": 0.54}, {"day": "2026-07-05", "in": 305, "out": 75161, "cache": 8372614, "total": 8448080, "sessions": 2, "msgs": 118, "cost": 4.86}, {"day": "2026-07-06", "in": 383, "out": 200244, "cache": 10471894, "total": 10672521, "sessions": 1, "msgs": 141, "cost": 7.14}, {"day": "2026-07-09", "in": 8798, "out": 7827, "cache": 983578, "total": 1000203, "sessions": 1, "msgs": 28, "cost": 0.62}, {"day": "2026-07-13", "in": 0, "out": 0, "cache": 0, "total": 0, "sessions": 1, "msgs": 3, "cost": 0.0}, {"day": "2026-07-16", "in": 103093, "out": 1863067, "cache": 658063886, "total": 660030046, "sessions": 3, "msgs": 2115, "cost": 331.83}, {"day": "2026-07-17", "in": 34903, "out": 618695, "cache": 262426156, "total": 263079754, "sessions": 3, "msgs": 497, "cost": 126.54}, {"day": "2026-07-18", "in": 5283, "out": 176743, "cache": 56255487, "total": 56437513, "sessions": 5, "msgs": 179, "cost": 56.11}, {"day": "2026-07-19", "in": 54201, "out": 610314, "cache": 461710673, "total": 462375188, "sessions": 3, "msgs": 702, "cost": 222.53}, {"day": "2026-07-20", "in": 169453, "out": 281957, "cache": 338167546, "total": 338618956, "sessions": 2, "msgs": 544, "cost": 146.38}, {"day": "2026-07-21", "in": 152354, "out": 414172, "cache": 81683160, "total": 82249686, "sessions": 2, "msgs": 464, "cost": 46.69}, {"day": "2026-07-23", "in": 3967, "out": 6618, "cache": 1490989, "total": 1501574, "sessions": 1, "msgs": 6, "cost": 3.4}], "projects": [{"project": "Applications", "total": 1974015048, "sessions": 8, "cost": 995.0}, {"project": "Users/aidendrep/PURDUECS/CSbridge/TA/lab06/src/test/java/edu/purdue/cs/bridge/lab06", "total": 39740969, "sessions": 2, "cost": 24.17}, {"project": "subagents", "total": 4658190, "sessions": 2, "cost": 3.85}, {"project": "Users/aidendrep/PURDUECS/CSbridge/TA", "total": 1423394, "sessions": 2, "cost": 2.12}, {"project": "Users/aidendrep/PURDUECS/CSbridge/TA/lab16/new", "total": 1000203, "sessions": 1, "cost": 0.62}, {"project": "Users/aidendrep/PROJECTS/DREPWS", "total": 0, "sessions": 1, "cost": 0.0}]},
+  "memory": [{"file":"Architecture.md","title":"Architecture","body":"\n_Linked from [[_Home]]._\n\n## Stack\n- Next.js 16 App Router · TypeScript · Tailwind v4 (`@theme inline` tokens in globals.css)\n- Supabase — Postgres + PostGIS, Auth (Google OAuth + email), Storage (`Avatars`, `Summit-Photos`)\n- Mapbox GL JS (map, clustering, Static Images API, geocoding)\n- TanStack React Query (30min staleTime cache)\n- Data source: OpenStreetMap Overpass API (authoritative open hiking dataset)\n\n## Components\n- `src/components/Map.tsx` — Mapbox map: peak clustering, iconic gold ★ markers, orange route lines. Has the blank-map fix (ResizeObserver + timed `resize()` nudges).\n- `src/app/explore/page.tsx` — viewport-driven peak/route loading (no radius slider). Supports `?peak=` fly-to and `?route=` isolation. Default center Colorado `[39.63,-106.37]`.\n- `src/app/peaks` / `src/app/routes` — browse pages with filters. `/routes/[id]` detail.\n- `src/lib/filters.ts` + `FilterSheet.tsx` — shared AllTrails-style filter modal (difficulty, length, route type, activity, features).\n- `src/lib/staticMap.ts` — route thumbnails via Mapbox Static API (orange polyline, Google-encoded).\n- `scripts/finish-import.ts` — unified OSM import (tiling, `--routes-only`/`--peaks-only`, geometry simplify cap 1200, batch 25).\n- `scripts/backfill-peak-photos.ts` / `enrich-features.ts` — Wikipedia photos+descriptions, POI feature tagging.\n\n## Data model\n- `peaks` (PostGIS location, `is_iconic`, elevation) · `routes` (geometry JSONB + PostGIS `path`, bbox cols, route_type/est_time) · `route_peaks` junction (via `link_route_peaks(buffer_m)`).\n- `profiles`, `summit_logs`, `peak_lists`, `peak_list_items`. RLS on all. Trigger auto-creates profile.\n- RPCs: `peaks_in_bounds`, `routes_in_bounds`, `nearby_peaks`, `link_route_peaks`.\n\n## Things NOT to re-derive\n- **DB is capped to US / Canada / Switzerland / Japan only** to stay under Supabase free 500MB. NEVER run import with country `ALL`.\n- The `tags` column was dropped — scripts must not insert it.\n- Overpass timeouts return HTTP 200 + empty + a \"remark\" — treat as failure and subdivide the bbox.\n- `.env.local` is never committed (service-role key is scripts-only).\n- Blank map in the sandbox preview is a Mapbox tile/origin quirk — verify maps in real Chrome or the live site.\n- Live at https://all-mountains.vercel.app (Vercel CI/CD from GitHub).\n\nSee [[Decisions]] · [[Glossary]] · [[Backlog]]\n"},{"file":"Backlog.md","title":"Backlog","body":"\n_Linked from [[_Home]]._\n\n## Now\n- [ ] \n\n## Next\n- [ ] \n\n## Someday\n- [ ] \n"},{"file":"Decisions.md","title":"Decisions (ADR-style)","body":"\n_Linked from [[_Home]]._\n\nOne short entry per meaningful choice. Format:\n\n## 2026-07-20 — <decision title>\n- **Context:** why this came up\n- **Decision:** what we chose\n- **Why:** the reasoning / alternatives rejected\n- **Affects:** [[Architecture]]\n"},{"file":"Exploration.md","title":"Exploration cache","body":"\n_Linked from [[_Home]]. The **explore** skill writes here. Subagents investigate in a throwaway context; their findings are distilled below so the same ground is never covered twice. CHECK THIS (or `grepai search`) before exploring anything._\n\n<!-- Format per entry:\n## YYYY-MM-DD — <question>\n- **Where looked:** dirs/files, grepai/ast-grep queries, dead-ends\n- **Findings:** answer with file:line refs\n- **Gotchas:** non-obvious things\n-->\n\n## 2026-07-21 — Peak↔Trail tie-in + Saved lists (schema, UI, patterns)\n- **Where looked:** `src/lib/types.ts`, `src/app/peaks/[id]/page.tsx`, `src/app/routes/[id]/page.tsx`, `src/app/routes/page.tsx`, `src/app/peaks/page.tsx`, `src/components/Navbar.tsx`, `src/lib/filters.ts`, `scripts/finish-import.ts`, `scripts/import-routes.ts`, `IMPORT_RUNBOOK.md`. grepai for peak_list/route_peaks. Dead-end: NO `*.sql`, no `supabase/` dir — schema lives only in live Supabase (SQL Editor workflow).\n- **Findings:**\n  - `route_peaks` junction = `(route_id, peak_id)`. \"Peaks for a route\" query exists at `routes/[id]/page.tsx:27-28` (`.from(\"route_peaks\").select(\"peaks(*)\").eq(\"route_id\",id)`). NO reverse \"trails for a peak\" query anywhere — that's Feature A's gap.\n  - Route difficulty = stored `routes.difficulty` (Easy|Moderate|Hard|Expert|Extreme), same vocab as peaks. Peak `getDifficulty()` is elevation-based — DON'T call it on routes (`types.ts:124-133`).\n  - No popularity column. \"Commonality\" proxy = peak_count (how many peaks a route hits) or `network` rank iwn>nwn>rwn>lwn (`NETWORK_LABEL` types.ts:88-94). `peak_count` is virtual (from `routes_in_bounds` RPC), not a real column.\n  - Types in `src/lib/types.ts`: `Peak` 1-19, `Route` 64-86 (opt `peak_count`), `PeakList` 55-62 (UNUSED anywhere), no `PeakListItem` type.\n  - `peak_lists` = TS-only, zero UI/queries. `peak_list_items` = not in code at all; live-DB columns UNKNOWN — must inspect before building. Feature B is greenfield.\n  - Fetch idioms: legacy `useEffect`+`useState` (peaks/peak-detail/route-detail) vs modern `useQuery` (routes/page.tsx). USE `useQuery` for new code. QueryClient staleTime 30min in `Providers.tsx`.\n  - Auth/mutations: browser client (`src/lib/supabase/client.ts`) + RLS `user_id=auth.uid()`; get user via `supabase.auth.getUser()`; redirect `/login` if none (`logbook/page.tsx:27-31`).\n  - DB changes: hand-run SQL in Supabase SQL Editor (no migration tooling). Scripts use service-role key.\n- **Gotchas:** `tags` col dropped but still in TS type; `peak_list_items` shape unknown → design fresh SQL; small trail-per-peak result sets → sort client-side, no pagination.\n- **Impl plan:** A = reverse `route_peaks.select(\"routes(*)\").eq(\"peak_id\",id)` in a `useQuery`, sort by peak_count (commonality) or difficulty rank, reuse `getDifficultyColor`. B = new clean SQL (`list_items` polymorphic peak_id/route_id) run in SQL Editor + `/lists` UI + Save-to-list button, client mutations + RLS.\n"},{"file":"Glossary.md","title":"Glossary","body":"\n_Linked from [[_Home]]._\n\n- **<term>** — definition, and where it lives in code.\n"},{"file":"Sessions.md","title":"Session Log","body":"\n_Linked from [[_Home]]. Append newest at top. Use `cckit note` for quick captures._\n\n## 2026-07-20\n- Brain initialized.\n"},{"file":"_Home.md","title":"🧠 all-mountains — Brain","body":"\n> Map of Content. This vault is the project's long-term memory. Open the `brain/` folder in Obsidian (or Foam/Logseq). Claude reads it every session via CLAUDE.md; grepai indexes it for semantic search.\n\n**Mobile-first PWA for discovering and logging mountain summits — AllTrails meets PeakVisor.**\n\n## Notes\n- [[Architecture]] — how the system fits together\n- [[Decisions]] — why we chose what we chose (ADR-style)\n- [[Glossary]] — domain terms & their meaning\n- [[Backlog]] — what's next / known TODOs\n- [[Sessions]] — running log of what changed and why\n\n## At a glance\n- **Repo:** https://github.com/drep2718/all-mountains.git\n- **Root:** `/Users/aidendrep/PROJECTS/All Mountains/all-mountains`\n\n_Update these notes as the project evolves — cheap for you, huge token savings for every future Claude session._\n"}]
 };
 
 const md = s => (s||"")
@@ -153,6 +178,37 @@ function fmt(n){ return (n||0).toLocaleString(); }
   ].map(([b,v,s])=>`<div class="stat"><b>${fmt(v)}</b><span>${b} · ${s}</span></div>`).join("");
 
   const brain = DATA.brain||{};
+  // ---- Token usage across sessions ----
+  const u = DATA.usage || {};
+  const ut = u.totals;
+  const kfmt = n => n == null ? "—" : n < 1e6 ? (n/1e3).toFixed(0)+"K" : (n/1e6).toFixed(2)+"M";
+  if (ut) {
+    document.getElementById("usageTot").innerHTML = [
+      ["Total tokens", kfmt(ut.total)],
+      ["Output (the costly part)", kfmt(ut.out)],
+      ["Sessions", fmt(ut.sessions)],
+      ["Assistant turns", fmt(ut.msgs)],
+      ["Est. cost", "$"+fmt(Math.round(ut.cost))],
+    ].map(([l,v])=>`<div><span>${l}</span><b>${v}</b></div>`).join("");
+
+    const days = u.days || [];
+    const max = Math.max(1, ...days.map(d=>d.total));
+    document.getElementById("chart").innerHTML = days.map(d=>{
+      const h = Math.round(d.total/max*100);
+      const md = d.day.slice(5);
+      return `<div class="col"><span class="tip">${d.day}: ${kfmt(d.total)} · $${d.cost.toFixed(2)}</span><i style="height:${h}%"></i><em>${md}</em></div>`;
+    }).join("");
+
+    const projs = u.projects || [];
+    const pmax = Math.max(1, ...projs.map(p=>p.total));
+    document.getElementById("projs").innerHTML = projs.map(p=>
+      `<div class="prow"><span class="nm" title="${p.project}">${p.project}</span><span class="track"><i style="width:${Math.round(p.total/pmax*100)}%"></i></span><span class="amt">${kfmt(p.total)} · $${p.cost.toFixed(0)}</span></div>`
+    ).join("");
+    document.getElementById("usageNote").innerHTML = `Parsed live from <code>~/.claude/projects</code> transcripts → also written to <code>~/.claude/token-usage.md</code>. Cost is a rough Sonnet-rate estimate (cache reads priced ~10× cheaper than input).`;
+  } else {
+    document.getElementById("usageCard").innerHTML = '<div class="sub">No session transcripts parsed yet. Run <code>cckit dashboard</code> after some sessions.</div>';
+  }
+
   const sys = [
     ["grepai daemon", t.grepai?.watching, t.grepai?.watching?"watching & indexing":"not running → `grepai watch`", t.grepai?.installed],
     ["Ollama + embeddings", t.ollama?.running && t.ollama?.model, t.ollama?.running?(t.ollama?.model?"nomic-embed-text ready":"model missing → `ollama pull nomic-embed-text`"):"not running → `ollama serve`", t.ollama?.installed],

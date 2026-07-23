@@ -52,6 +52,22 @@
   .foot{color:var(--faint);font-size:12px;line-height:1.7;margin-top:28px;border-top:1px solid var(--border);padding-top:16px}
   .bar{height:6px;border-radius:6px;background:#222b3a;overflow:hidden;margin-top:12px}
   .bar i{display:block;height:100%;background:linear-gradient(90deg,var(--green),#86efac)}
+  .usage-tot{display:flex;flex-wrap:wrap;gap:24px;margin-bottom:18px}
+  .usage-tot div span{display:block;color:var(--faint);font-size:11px;text-transform:uppercase;letter-spacing:.06em}
+  .usage-tot div b{font-family:var(--mono);font-size:24px}
+  .chart{display:flex;align-items:flex-end;gap:3px;height:120px;padding-top:6px}
+  .chart .col{flex:1;display:flex;flex-direction:column;justify-content:flex-end;align-items:center;height:100%;position:relative}
+  .chart .col i{width:100%;max-width:22px;border-radius:3px 3px 0 0;background:linear-gradient(180deg,var(--accent),#3f6dc0);min-height:2px;transition:height .3s}
+  .chart .col:hover i{background:linear-gradient(180deg,#86efac,var(--green))}
+  .chart .col em{position:absolute;bottom:-16px;font-style:normal;color:var(--faint);font-size:9px;font-family:var(--mono);white-space:nowrap}
+  .chart .col .tip{position:absolute;top:-30px;background:#000;border:1px solid var(--border);border-radius:6px;padding:3px 7px;font-size:11px;font-family:var(--mono);white-space:nowrap;opacity:0;pointer-events:none;transition:opacity .15s;z-index:5}
+  .chart .col:hover .tip{opacity:1}
+  .projs{margin-top:28px;display:flex;flex-direction:column;gap:6px}
+  .projs .prow{display:flex;align-items:center;gap:10px;font-size:13px}
+  .projs .prow .nm{color:var(--ink);width:200px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+  .projs .prow .track{flex:1;height:8px;border-radius:6px;background:#222b3a;overflow:hidden}
+  .projs .prow .track i{display:block;height:100%;background:linear-gradient(90deg,var(--violet),var(--accent))}
+  .projs .prow .amt{font-family:var(--mono);font-size:12px;color:var(--muted);width:100px;text-align:right}
 </style>
 </head>
 <body>
@@ -76,6 +92,14 @@
   </div>
 
   <div class="grid3" id="stats"></div>
+
+  <div class="section-title">Token usage · across all sessions</div>
+  <div class="card" id="usageCard">
+    <div class="usage-tot" id="usageTot"></div>
+    <div class="chart" id="chart"></div>
+    <div class="projs" id="projs"></div>
+    <div class="sub" id="usageNote"></div>
+  </div>
 
   <div class="section-title">Systems</div>
   <div class="rows" id="systems"></div>
@@ -118,6 +142,37 @@ function fmt(n){ return (n||0).toLocaleString(); }
   ].map(([b,v,s])=>`<div class="stat"><b>${fmt(v)}</b><span>${b} · ${s}</span></div>`).join("");
 
   const brain = DATA.brain||{};
+  // ---- Token usage across sessions ----
+  const u = DATA.usage || {};
+  const ut = u.totals;
+  const kfmt = n => n == null ? "—" : n < 1e6 ? (n/1e3).toFixed(0)+"K" : (n/1e6).toFixed(2)+"M";
+  if (ut) {
+    document.getElementById("usageTot").innerHTML = [
+      ["Total tokens", kfmt(ut.total)],
+      ["Output (the costly part)", kfmt(ut.out)],
+      ["Sessions", fmt(ut.sessions)],
+      ["Assistant turns", fmt(ut.msgs)],
+      ["Est. cost", "$"+fmt(Math.round(ut.cost))],
+    ].map(([l,v])=>`<div><span>${l}</span><b>${v}</b></div>`).join("");
+
+    const days = u.days || [];
+    const max = Math.max(1, ...days.map(d=>d.total));
+    document.getElementById("chart").innerHTML = days.map(d=>{
+      const h = Math.round(d.total/max*100);
+      const md = d.day.slice(5);
+      return `<div class="col"><span class="tip">${d.day}: ${kfmt(d.total)} · $${d.cost.toFixed(2)}</span><i style="height:${h}%"></i><em>${md}</em></div>`;
+    }).join("");
+
+    const projs = u.projects || [];
+    const pmax = Math.max(1, ...projs.map(p=>p.total));
+    document.getElementById("projs").innerHTML = projs.map(p=>
+      `<div class="prow"><span class="nm" title="${p.project}">${p.project}</span><span class="track"><i style="width:${Math.round(p.total/pmax*100)}%"></i></span><span class="amt">${kfmt(p.total)} · $${p.cost.toFixed(0)}</span></div>`
+    ).join("");
+    document.getElementById("usageNote").innerHTML = `Parsed live from <code>~/.claude/projects</code> transcripts → also written to <code>~/.claude/token-usage.md</code>. Cost is a rough Sonnet-rate estimate (cache reads priced ~10× cheaper than input).`;
+  } else {
+    document.getElementById("usageCard").innerHTML = '<div class="sub">No session transcripts parsed yet. Run <code>cckit dashboard</code> after some sessions.</div>';
+  }
+
   const sys = [
     ["grepai daemon", t.grepai?.watching, t.grepai?.watching?"watching & indexing":"not running → `grepai watch`", t.grepai?.installed],
     ["Ollama + embeddings", t.ollama?.running && t.ollama?.model, t.ollama?.running?(t.ollama?.model?"nomic-embed-text ready":"model missing → `ollama pull nomic-embed-text`"):"not running → `ollama serve`", t.ollama?.installed],
