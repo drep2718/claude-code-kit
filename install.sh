@@ -67,7 +67,8 @@ else
   echo "    ~/.claude/CLAUDE.md exists — compare with templates/CLAUDE.global.md to merge"
 fi
 
-# ── 6c. Install skills user-scope (load in EVERY session: explore, handoff, design, optimize)
+# ── 6c. Install skills user-scope (load in EVERY session: explore, handoff,
+#        design, optimize, ed-migration)
 if [ -d "$KIT_DIR/skills" ]; then
   mkdir -p ~/.claude/skills
   for s in "$KIT_DIR"/skills/*/; do

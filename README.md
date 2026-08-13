@@ -22,6 +22,18 @@ That's it. Open a new Claude Code session and it's active.
 | **CLAUDE.md template** | Points Claude at the brain + the tools, every session. | compounds the above |
 | **Permissions allowlist** | Approval round-trips for safe read-only commands. | time, mostly |
 
+## Skills
+
+Installed user-scope to `~/.claude/skills`, so they load in every session.
+
+| Skill | What it's for |
+|---|---|
+| **explore** | Codebase "how/where/why" questions, answered in a subagent so file reads never hit the main window, and cached to `brain/Exploration.md`. |
+| **handoff** | Hand the current state of work to a fresh session without re-deriving it. |
+| **design** | Distinctive, production-grade UI that doesn't read as templated. |
+| **optimize** | Diagnose and cut token/context burn in a running session. |
+| **ed-migration** | Port CS Bridge labs and challenges to Ed (edstem.org) and re-publish from git with `ed_push.py` — `challenge.yaml`, graders and `@Tag` scoring, the ExamRunner/Reflect harness, Ed's markdown subset, and the REST API's undocumented behaviour. |
+
 ## Honest notes
 
 - Savings are **not additive** and depend heavily on project size. Small repos: expect ~10–30% overall. Large repos with heavy exploration: much more.
