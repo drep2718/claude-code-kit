@@ -91,26 +91,63 @@ the reference twice by the same reasoning proves nothing.
 Report what you actually ran and what it printed. If something is
 unverified, say so.
 
-## Pushing
+## Never push. Hand back the command.
 
-Always dry-run first, and show the output before doing it for real.
+**You do not run `ed_push.py` with `--no-dry-run`. Ever.** Pushing hits
+a live course and is the user's call, not yours — not even when they
+say "and push it", not even when you are certain it is correct. Finish
+the work, then hand back the exact command for them to run.
+
+A dry-run is fine and encouraged — it writes nothing and catches a bad
+manifest before they run the real thing:
 
 ```bash
 cd <repo>/ed-push
-python3 ed_push.py push-challenge ../<lab>/ed --prod              # preview
-python3 ed_push.py push-challenge ../<lab>/ed --prod --no-dry-run
+python3 ed_push.py push-challenge ../<lab>/ed --prod
 ```
 
-- Add `--dev` when the lesson title isn't `Lab|Homework|HW`. Lesson
-  **175995 is "Challenges"**, so every bonus challenge needs it.
-- Handout before challenge on a fresh lesson.
-- Read the ✓/✗ verify table. Any ✗ means the challenge is unusable.
-- Filespace uploads never delete — after a split or rename, stale files
-  must be removed in the Ed UI.
+### Getting the slide id
 
-**Pushing is outward-facing and hits a live course.** Do not push
-unless the user asked for it in this task. If they asked you to
-implement something, implement it and hand back the command.
+Never invent one, and never reuse a nearby id. If the challenge has no
+`slide:` yet, **stop and ask the user for the slide URL**:
+
+> This needs a slide before it can be pushed. Create a blank **Code**
+> slide in lesson NNNNN in the Ed UI and paste me its URL.
+
+They will give you something shaped like:
+
+```
+https://edstem.org/us/courses/100745/lessons/175995/edit/slides/1030269
+                              ^course        ^lesson              ^slide
+```
+
+Take `lesson` and `slide` from the path, write them into
+`challenge.yaml`, and **diff that line** before handing anything back —
+a one-digit slip overwrites an unrelated slide.
+
+### What to hand back
+
+Always the copy-pasteable pair, preview first:
+
+```bash
+cd /Users/aidendrep/PURDUECS/CSbridge-TA/ed-push
+
+# preview — writes nothing
+python3 ed_push.py push-challenge ../<lab>/ed --prod [--dev]
+
+# push
+python3 ed_push.py push-challenge ../<lab>/ed --prod [--dev] --no-dry-run
+```
+
+- Include `--dev` when the lesson title isn't `Lab|Homework|HW`. Lesson
+  **175995 is "Challenges"**, so every bonus challenge needs it. Say
+  why you included it.
+- Handout before challenge on a fresh lesson — give both commands in
+  order.
+- Tell them to read the ✓/✗ verify table, and that any ✗ means the
+  challenge is unusable.
+- Remind them, when relevant, that filespace uploads never delete —
+  after a split or rename, stale files must be removed in the Ed UI.
 
 ## Editing existing content
 

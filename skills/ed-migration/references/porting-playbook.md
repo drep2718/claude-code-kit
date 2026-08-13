@@ -86,12 +86,16 @@ the reference twice by the same reasoning proves nothing; use a
 different method (brute force vs. the clever one) and a few hundred
 random inputs.
 
-## 6. Push
+## 6. Dry-run, then hand over the push
+
+**Do not run the real push.** Dry-run to validate, then give the user
+the command. If there is no `slide:` yet, ask them for the slide URL
+first and take the ids out of it.
 
 ```bash
 cd <repo>/ed-push
-python3 ed_push.py push-challenge ../<lab>/ed --prod              # dry-run
-python3 ed_push.py push-challenge ../<lab>/ed --prod --no-dry-run
+python3 ed_push.py push-challenge ../<lab>/ed --prod              # you run this
+python3 ed_push.py push-challenge ../<lab>/ed --prod --no-dry-run # they run this
 ```
 
 Add `--dev` when the lesson title isn't `Lab|Homework|HW` — bonus

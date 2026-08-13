@@ -11,8 +11,9 @@ re-publishable from git. The repo directory is the source of truth;
 
 ## Ground rules
 
-1. **Dry-run is the default.** Every command previews unless you pass
-   `--no-dry-run`. Never skip the dry-run on a prod push.
+1. **Never run the real push. Hand back the command.** `--no-dry-run`
+   hits a live course and is the user's call — not yours, even when
+   asked to "just push it". Dry-runs are fine; they write nothing.
 2. **The `ed/` directory is the source of truth.** Edit files → dry-run
    → push → read the ✓/✗ verify table. If any row is ✗, the challenge
    is not usable; fix and re-push.
@@ -49,7 +50,8 @@ first, `push-challenge` the second.
 cd <repo>/ed-push
 
 python3 ed_push.py doctor [--prod]
-python3 ed_push.py push-challenge ../path/to/ed [--prod] [--dev] [--no-dry-run]
+python3 ed_push.py push-challenge ../path/to/ed [--prod] [--dev]
+#   ...and the same with --no-dry-run — THE USER RUNS THAT ONE, not you
 python3 ed_push.py verify-challenge ../path/to/ed
 python3 ed_push.py push-doc ../path/to/handout.md --slide N [--prod] [--no-dry-run]
 python3 ed_push.py convert file.md          # offline preview of the Ed XML
@@ -64,8 +66,18 @@ python3 ed_push.py convert file.md          # offline preview of the Ed XML
   `allowed_lesson_patterns` in `config.yaml` removes that need.
 - First push of a new challenge **clones a template slide**; there is no
   create-slide API. `template_slide` in `config.yaml` may be null, in
-  which case you must create a blank Code slide in the Ed UI and paste
-  its id into `challenge.yaml` as `slide:` before pushing.
+  which case a blank Code slide must be made in the Ed UI first.
+
+**Getting ids from a slide URL** — never invent one:
+
+```
+https://edstem.org/us/courses/100745/lessons/175995/edit/slides/1030269
+                              ^course        ^lesson              ^slide
+```
+
+Ask the user for that URL rather than guessing, and diff the `slide:`
+line before handing over a push command — a one-digit slip overwrites
+an unrelated slide.
 
 ## Porting a whole repo
 
@@ -79,8 +91,11 @@ Work one lab at a time, in this order. Full detail in
    Most old Gradescope suites need rewriting, not porting.
 4. **Reconcile points** to a round total.
 5. **Verify locally** — compile grader and solution; run both.
-6. **Dry-run, push, read the verify table.**
-7. **Open the slide, press Test once** with the reference solution.
+6. **Ask for the slide URL** if there's no `slide:` yet, and read the
+   lesson and slide ids out of it.
+7. **Dry-run**, then hand the user the `--no-dry-run` command to run.
+8. Tell them to read the ✓/✗ verify table, then open the slide and
+   press Test once with the reference solution.
 
 ## Non-negotiable grader rules
 
