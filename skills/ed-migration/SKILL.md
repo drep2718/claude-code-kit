@@ -122,6 +122,22 @@ Full list in `references/api-gotchas.md`. The ones that bite hardest:
 - `references/markdown-and-handouts.md` — Ed's markdown subset, runnable
   snippets, images, document slides.
 - `references/api-gotchas.md` — the undocumented REST behaviour.
+- `references/writeup-format.md` — house format for writeups, handouts,
+  marks tables, feature tables and scaffold comments.
+- `references/lab-catalog.md` — **memory**: every lab's lesson, slide,
+  points, grader and migration state; which labs aren't migrated; which
+  bonus challenges have no slide yet.
+
+## The ed-porter subagent
+
+For anything beyond a one-line fix, delegate to the **`ed-porter`**
+agent — it loads this skill, uses `Explore` for discovery so lab trees
+never fill the main context, and verifies before reporting.
+
+```
+Agent(subagent_type="ed-porter",
+      prompt="Port lab10 to Ed. It has no ed/ directory yet.")
+```
 
 ## Provenance
 

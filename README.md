@@ -32,7 +32,15 @@ Installed user-scope to `~/.claude/skills`, so they load in every session.
 | **handoff** | Hand the current state of work to a fresh session without re-deriving it. |
 | **design** | Distinctive, production-grade UI that doesn't read as templated. |
 | **optimize** | Diagnose and cut token/context burn in a running session. |
-| **ed-migration** | Port CS Bridge labs and challenges to Ed (edstem.org) and re-publish from git with `ed_push.py` — `challenge.yaml`, graders and `@Tag` scoring, the ExamRunner/Reflect harness, Ed's markdown subset, and the REST API's undocumented behaviour. |
+| **ed-migration** | Port CS Bridge labs and challenges to Ed (edstem.org) and re-publish from git with `ed_push.py` — `challenge.yaml`, graders and `@Tag` scoring, the ExamRunner/Reflect harness, Ed's markdown subset, and the REST API's undocumented behaviour. Carries a catalog of every lab's lesson/slide/points as memory. |
+
+## Agents
+
+Installed to `~/.claude/agents`, invocable as `subagent_type`.
+
+| Agent | What it's for |
+|---|---|
+| **ed-porter** | Loads the `ed-migration` skill, delegates discovery to `Explore` so lab trees never fill the main context, and refuses to report done without compiling and reconciling points. |
 
 ## Honest notes
 

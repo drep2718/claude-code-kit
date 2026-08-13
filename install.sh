@@ -78,6 +78,16 @@ if [ -d "$KIT_DIR/skills" ]; then
   echo "    installed skills → ~/.claude/skills ($(ls -1 "$KIT_DIR"/skills | tr '\n' ' '))"
 fi
 
+# ── 6d. Install agents user-scope (subagents available in EVERY session)
+if [ -d "$KIT_DIR/agents" ]; then
+  mkdir -p ~/.claude/agents
+  for a in "$KIT_DIR"/agents/*.md; do
+    name=$(basename "$a")
+    [ -f ~/.claude/agents/"$name" ] || cp "$a" ~/.claude/agents/"$name"
+  done
+  echo "    installed agents → ~/.claude/agents ($(ls -1 "$KIT_DIR"/agents | tr '\n' ' '))"
+fi
+
 # ── 6d. Statusline: live context-usage bar so you never hit the limit by surprise
 [ -f "$KIT_DIR/templates/statusline.sh" ] && cp "$KIT_DIR/templates/statusline.sh" ~/.claude/statusline.sh
 echo "    (add \"statusLine\": {\"type\":\"command\",\"command\":\"bash ~/.claude/statusline.sh\"} to ~/.claude/settings.json)"
